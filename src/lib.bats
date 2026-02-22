@@ -41,6 +41,16 @@ end
    buf: !$A.arr(byte, l, n), max_len: int n)
   : $R.option(int)
 
+(* Get env var using a null-terminated array as the name.
+   The array must contain a null byte within its bounds.
+   buf: output array to write value into.
+   Returns option(int): some(len) if set, none if not set. *)
+#pub fn get_cstr
+  {ln:agz}{nn:pos}
+  {l:agz}{n:pos}
+  (name: !$A.arr(byte, ln, nn), buf: !$A.arr(byte, l, n), max_len: int n)
+  : $R.option(int)
+
 (* ============================================================
    Implementation
    ============================================================ *)
@@ -55,6 +65,16 @@ implement get {ln}{nn}{l}{n} (name, name_len, buf, max_len) = let
     $UNSAFE begin $UNSAFE.castvwtp1{ptr}(buf) end,
     max_len)
   val () = $A.free<byte>(cname)
+in
+  if len >= 0 then $R.some(len)
+  else $R.none()
+end
+
+implement get_cstr {ln}{nn}{l}{n} (name, buf, max_len) = let
+  val len = $extfcall(int, "_env_getenv",
+    $UNSAFE begin $UNSAFE.castvwtp1{ptr}(name) end,
+    $UNSAFE begin $UNSAFE.castvwtp1{ptr}(buf) end,
+    max_len)
 in
   if len >= 0 then $R.some(len)
   else $R.none()
