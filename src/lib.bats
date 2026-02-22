@@ -12,6 +12,8 @@
 
 $UNSAFE begin
 %{#
+#ifndef _ENV_RUNTIME_DEFINED
+#define _ENV_RUNTIME_DEFINED
 #include <stdlib.h>
 #include <string.h>
 
@@ -23,6 +25,7 @@ static int _env_getenv(const char *name, void *buf, int max_len) {
   memcpy(buf, val, (unsigned int)len);
   return len;
 }
+#endif
 %}
 end
 
