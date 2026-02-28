@@ -27,7 +27,6 @@ static int _env_getenv(const char *name, void *buf, int max_len) {
 }
 #endif
 %}
-end
 
 (* ============================================================
    Public API
@@ -82,3 +81,5 @@ in
   if len >= 0 then $R.some(len)
   else $R.none()
 end
+
+end (* $UNSAFE *)
