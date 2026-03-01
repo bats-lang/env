@@ -2,3 +2,7 @@
 name = "env"
 kind = "lib"
 unsafe = true
+
+[dependencies]
+"array" = ""
+"result" = ""
