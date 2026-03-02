@@ -27,6 +27,7 @@ static int _env_getenv(const char *name, void *buf, int max_len) {
 }
 #endif
 %}
+end
 
 (* ============================================================
    Public API
@@ -53,10 +54,10 @@ implement get {ln}{nn}{l}{n} (name, name_len, buf, max_len) = let
   val cname = $A.alloc<byte>(name_len + 1)
   val () = $A.write_borrow(cname, 0, name, name_len)
   val () = $A.write_byte(cname, name_len, 0)
-  val len = $extfcall(int, "_env_getenv",
+  val len = $UNSAFE begin $extfcall(int, "_env_getenv",
     $UNSAFE.castvwtp1{ptr}(cname),
     $UNSAFE.castvwtp1{ptr}(buf),
-    max_len)
+    max_len) end
   val () = $A.free<byte>(cname)
 in
   if len >= 0 then $R.some(len)
@@ -64,13 +65,11 @@ in
 end
 
 implement get_cstr {ln}{nn}{l}{n} (name, buf, max_len) = let
-  val len = $extfcall(int, "_env_getenv",
+  val len = $UNSAFE begin $extfcall(int, "_env_getenv",
     $UNSAFE.castvwtp1{ptr}(name),
     $UNSAFE.castvwtp1{ptr}(buf),
-    max_len)
+    max_len) end
 in
   if len >= 0 then $R.some(len)
   else $R.none()
 end
-
-end (* $UNSAFE *)
