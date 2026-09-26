@@ -38,13 +38,15 @@ end
   {l:agz}{n:pos}
   (name: !$A.borrow(byte, ln, nn), name_len: int nn,
    buf: !$A.arr(byte, l, n), max_len: int n)
-  : $R.option(int)
+  : $R.option([k:nat | k <= n] int k)
 
+(* As get, with a NUL-terminated name. The value's length (copied to
+   buf[0, k), truncated to max_len), or none when the variable is unset. *)
 #pub fn get_cstr
   {ln:agz}{nn:pos}
   {l:agz}{n:pos}
   (name: !$A.arr(byte, ln, nn), buf: !$A.arr(byte, l, n), max_len: int n)
-  : $R.option(int)
+  : $R.option([k:nat | k <= n] int k)
 
 (* ============================================================
    Implementation
@@ -54,7 +56,7 @@ implement get {ln}{nn}{l}{n} (name, name_len, buf, max_len) = let
   val cname = $A.alloc<byte>(name_len + 1)
   val () = $A.write_borrow(cname, 0, name, name_len)
   val () = $A.write_byte(cname, name_len, 0)
-  val len = $UNSAFE begin $extfcall(int, "_env_getenv",
+  val len = $UNSAFE begin $extfcall([k:int | k <= n] int k, "_env_getenv",
     $UNSAFE.castvwtp1{ptr}(cname),
     $UNSAFE.castvwtp1{ptr}(buf),
     max_len) end
@@ -65,7 +67,7 @@ in
 end
 
 implement get_cstr {ln}{nn}{l}{n} (name, buf, max_len) = let
-  val len = $UNSAFE begin $extfcall(int, "_env_getenv",
+  val len = $UNSAFE begin $extfcall([k:int | k <= n] int k, "_env_getenv",
     $UNSAFE.castvwtp1{ptr}(name),
     $UNSAFE.castvwtp1{ptr}(buf),
     max_len) end
