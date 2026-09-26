@@ -1,0 +1,8 @@
+[package]
+name = "value-past-end"
+kind = "lib"
+
+[dependencies]
+"array" = ""
+"env" = ""
+"result" = ""

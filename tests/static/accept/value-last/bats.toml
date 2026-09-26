@@ -1,0 +1,8 @@
+[package]
+name = "value-last"
+kind = "lib"
+
+[dependencies]
+"array" = ""
+"env" = ""
+"result" = ""
