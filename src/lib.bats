@@ -16,6 +16,7 @@ $UNSAFE begin
 #define _ENV_RUNTIME_DEFINED
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #if defined(__APPLE__)
 #include <crt_externs.h>
 #elif defined(__FreeBSD__) || defined(__DragonFly__) || defined(__NetBSD__) || defined(__OpenBSD__)
@@ -33,6 +34,18 @@ static int _env_getenv(const char *name, void *buf, int max_len) {
   int len = (int)strlen(val);
   if (len > max_len) len = max_len;
   memcpy(buf, val, (unsigned int)len);
+  return len;
+}
+
+/* The current directory's absolute path, truncated to max_len bytes;
+   -1 when it cannot be determined. */
+static int _env_cwd(void *buf, int max_len) {
+  char tmp[4096];
+  int len;
+  if (!getcwd(tmp, sizeof tmp)) return -1;
+  len = (int)strlen(tmp);
+  if (len > max_len) len = max_len;
+  memcpy(buf, tmp, (unsigned int)len);
   return len;
 }
 
@@ -133,6 +146,13 @@ end
   (buf: !$A.arr(byte, l, n), max_len: int n)
   : $R.option([k:nat | k <= n] int k)
 
+(* The current directory's absolute path in buf[0, k), truncated to
+   max_len bytes; none when it cannot be determined. *)
+#pub fn cwd_read
+  {l:agz}{n:pos}
+  (buf: !$A.arr(byte, l, n), max_len: int n)
+  : $R.option([k:nat | k <= n] int k)
+
 (* ============================================================
    Implementation
    ============================================================ *)
@@ -163,6 +183,14 @@ end
 
 implement args_read {l}{n} (buf, max_len) = let
   val len = $UNSAFE begin $extfcall([k:int | k <= n] int k, "_env_args",
+    $UNSAFE.castvwtp1{ptr}(buf), max_len) end
+in
+  if len >= 0 then $R.some(len)
+  else $R.none()
+end
+
+implement cwd_read {l}{n} (buf, max_len) = let
+  val len = $UNSAFE begin $extfcall([k:int | k <= n] int k, "_env_cwd",
     $UNSAFE.castvwtp1{ptr}(buf), max_len) end
 in
   if len >= 0 then $R.some(len)

@@ -1,6 +1,6 @@
 #!/bin/sh
 # Compiles env's C runtime on its own (no bats, no ATS2) and checks
-# _env_args against the real argv. It runs on every OS in CI, including
+# _env_args against the real argv and _env_cwd against getcwd. It runs on every OS in CI, including
 # ones where bats cannot run yet.
 #
 # usage: tests/c/run.sh   (needs cc)
@@ -31,6 +31,15 @@ int main(int argc, char **argv) {
     return 1;
   }
   printf("ok   c-args\n");
+  {
+    char c1[4096], c2[4096];
+    int kc = _env_cwd(c1, (int)sizeof c1);
+    if (!getcwd(c2, sizeof c2) || kc != (int)strlen(c2) || memcmp(c1, c2, (size_t)kc) != 0) {
+      printf("FAIL cwd: got %d bytes\n", kc);
+      return 1;
+    }
+  }
+  printf("ok   c-cwd\n");
   return 0;
 }
 C

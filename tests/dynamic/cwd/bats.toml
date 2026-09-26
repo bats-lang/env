@@ -1,0 +1,8 @@
+[package]
+name = "cwd"
+kind = "bin"
+
+[dependencies]
+"array" = ""
+"result" = ""
+"env" = ""
