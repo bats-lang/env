@@ -49,6 +49,11 @@ static int _env_cwd(void *buf, int max_len) {
   return len;
 }
 
+/* Whether standard error is a terminal. */
+static int _env_stderr_tty(void) {
+  return isatty(2) ? 1 : 0;
+}
+
 /* Copies argv[0..argc) into buf as NUL-terminated strings back to back,
    stopping at max_len bytes. Returns the byte count. */
 static int _env_copy_argv(int argc, char **argv, char *buf, int max_len) {
@@ -153,6 +158,9 @@ end
   (buf: !$A.arr(byte, l, n), max_len: int n)
   : $R.option([k:nat | k <= n] int k)
 
+(* Whether the process's standard error is a terminal (isatty). *)
+#pub fn stderr_is_terminal (): bool
+
 (* ============================================================
    Implementation
    ============================================================ *)
@@ -196,3 +204,6 @@ in
   if len >= 0 then $R.some(len)
   else $R.none()
 end
+
+implement stderr_is_terminal () =
+  $UNSAFE begin $extfcall(int, "_env_stderr_tty") end = 1
