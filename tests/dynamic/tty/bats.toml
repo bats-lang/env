@@ -1,0 +1,6 @@
+[package]
+name = "tty"
+kind = "bin"
+
+[dependencies]
+"env" = ""
