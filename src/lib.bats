@@ -16,6 +16,16 @@ $UNSAFE begin
 #define _ENV_RUNTIME_DEFINED
 #include <stdlib.h>
 #include <string.h>
+#if defined(__APPLE__)
+#include <crt_externs.h>
+#elif defined(__FreeBSD__) || defined(__DragonFly__) || defined(__NetBSD__) || defined(__OpenBSD__)
+#include <sys/types.h>
+#include <sys/sysctl.h>
+#include <unistd.h>
+#else
+#include <fcntl.h>
+#include <unistd.h>
+#endif
 
 static int _env_getenv(const char *name, void *buf, int max_len) {
   const char *val = getenv(name);
@@ -24,6 +34,73 @@ static int _env_getenv(const char *name, void *buf, int max_len) {
   if (len > max_len) len = max_len;
   memcpy(buf, val, (unsigned int)len);
   return len;
+}
+
+/* Copies argv[0..argc) into buf as NUL-terminated strings back to back,
+   stopping at max_len bytes. Returns the byte count. */
+static int _env_copy_argv(int argc, char **argv, char *buf, int max_len) {
+  int i, k = 0;
+  for (i = 0; i < argc && k < max_len; i++) {
+    int len = (int)strlen(argv[i]) + 1;
+    if (len > max_len - k) len = max_len - k;
+    memcpy(buf + k, argv[i], (unsigned int)len);
+    k += len;
+  }
+  return k;
+}
+
+/* The process's arguments in the format of Linux's /proc/self/cmdline
+   (NUL-terminated strings back to back), truncated to max_len bytes;
+   -1 when they cannot be read. */
+static int _env_args(void *vbuf, int max_len) {
+  char *buf = (char *)vbuf;
+#if defined(__APPLE__)
+  return _env_copy_argv(*_NSGetArgc(), *_NSGetArgv(), buf, max_len);
+#elif defined(__OpenBSD__)
+  int mib[4] = { CTL_KERN, KERN_PROC_ARGS, 0, KERN_PROC_ARGV };
+  size_t sz = 0;
+  char **argv;
+  int argc = 0, k;
+  mib[2] = (int)getpid();
+  if (sysctl(mib, 4, NULL, &sz, NULL, 0) != 0) return -1;
+  argv = (char **)malloc(sz);
+  if (!argv) return -1;
+  if (sysctl(mib, 4, argv, &sz, NULL, 0) != 0) { free(argv); return -1; }
+  while (argv[argc]) argc++;
+  k = _env_copy_argv(argc, argv, buf, max_len);
+  free(argv);
+  return k;
+#elif defined(__FreeBSD__) || defined(__DragonFly__) || defined(__NetBSD__)
+#if defined(__NetBSD__)
+  int mib[4] = { CTL_KERN, KERN_PROC_ARGS, 0, KERN_PROC_ARGV };
+  int pid_at = 2;
+#else
+  int mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_ARGS, 0 };
+  int pid_at = 3;
+#endif
+  size_t sz = 0;
+  char *all;
+  mib[pid_at] = (int)getpid();
+  if (sysctl(mib, 4, NULL, &sz, NULL, 0) != 0) return -1;
+  all = (char *)malloc(sz);
+  if (!all) return -1;
+  if (sysctl(mib, 4, all, &sz, NULL, 0) != 0) { free(all); return -1; }
+  if (sz > (size_t)max_len) sz = (size_t)max_len;
+  memcpy(buf, all, sz);
+  free(all);
+  return (int)sz;
+#else
+  int fd = open("/proc/self/cmdline", O_RDONLY);
+  int k = 0;
+  if (fd < 0) return -1;
+  while (k < max_len) {
+    int n = (int)read(fd, buf + k, (unsigned int)(max_len - k));
+    if (n <= 0) break;
+    k += n;
+  }
+  close(fd);
+  return k;
+#endif
 }
 #endif
 %}
@@ -46,6 +123,14 @@ end
   {ln:agz}{nn:pos}
   {l:agz}{n:pos}
   (name: !$A.arr(byte, ln, nn), buf: !$A.arr(byte, l, n), max_len: int n)
+  : $R.option([k:nat | k <= n] int k)
+
+(* The process's arguments, argv[0] first, as NUL-terminated strings
+   back to back in buf[0, k), truncated to max_len bytes; none when the
+   system cannot supply them. *)
+#pub fn args_read
+  {l:agz}{n:pos}
+  (buf: !$A.arr(byte, l, n), max_len: int n)
   : $R.option([k:nat | k <= n] int k)
 
 (* ============================================================
@@ -71,6 +156,14 @@ implement get_cstr {ln}{nn}{l}{n} (name, buf, max_len) = let
     $UNSAFE.castvwtp1{ptr}(name),
     $UNSAFE.castvwtp1{ptr}(buf),
     max_len) end
+in
+  if len >= 0 then $R.some(len)
+  else $R.none()
+end
+
+implement args_read {l}{n} (buf, max_len) = let
+  val len = $UNSAFE begin $extfcall([k:int | k <= n] int k, "_env_args",
+    $UNSAFE.castvwtp1{ptr}(buf), max_len) end
 in
   if len >= 0 then $R.some(len)
   else $R.none()

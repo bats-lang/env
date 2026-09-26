@@ -1,0 +1,8 @@
+[package]
+name = "args"
+kind = "bin"
+
+[dependencies]
+"array" = ""
+"result" = ""
+"env" = ""
