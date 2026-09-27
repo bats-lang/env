@@ -1,0 +1,9 @@
+[package]
+name = "vars"
+kind = "bin"
+
+[dependencies]
+"array" = ""
+"result" = ""
+"str" = ""
+"env" = ""
