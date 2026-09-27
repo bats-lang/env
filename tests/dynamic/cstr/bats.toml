@@ -1,0 +1,9 @@
+[package]
+name = "cstr"
+kind = "bin"
+
+[dependencies]
+"array" = ""
+"result" = ""
+"str" = ""
+"env" = ""
